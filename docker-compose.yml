@@ -1,0 +1,3 @@
+services:
+  hollarbot:
+    build: .

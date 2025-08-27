@@ -1,0 +1,26 @@
+{
+  "endpoint": "wss://1.lark.hydration.cloud",
+  "cooldown": 3,
+  "assets": {
+    "sUSDe": {
+      "assetId": "1000625",
+      "buy":	{ "priceDiff": "0.01", "amount": "5000" }, 
+      "sell": { "priceDiff": "0.01", "amount": "5000" }
+    },
+    "sUSDS": {
+      "assetId": "1000745",
+      "buy":	{ "priceDiff": "0.01", "amount": "5000" }, 
+      "sell": { "priceDiff": "0.01", "amount": "5000" }
+    },
+    "USDT(Tether)": {
+      "assetId": "10",
+      "buy":  { "priceDiff": "0.01", "amount": "5000" }, 
+      "sell": { "priceDiff": "0.01", "amount": "5000" }
+    },
+    "USDC": {
+      "assetId": "22",
+      "buy":	{ "priceDiff": "0.01", "amount": "5000" }, 
+      "sell": { "priceDiff": "0.01", "amount": "5000" }
+    }
+  }
+}
