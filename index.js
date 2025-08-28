@@ -16,6 +16,10 @@ const api = await ApiPromise.create({
 const sdk = await createSdkContext(api);
 const HOLLAR = "222"
 
+const BIN_SEARCH_ITER = 10;
+const TWO = new Big("2.0")
+const PRECISSION = new Big("0.001")
+
 class AssetRegistry {
 	#api
 	#assets
@@ -51,19 +55,114 @@ class AssetRegistry {
 	}
 }
 
-async function findTrade(opp, ag) {
-	const p = [...opp.assets, opp.amount]
+async function findSellTrade(assets, minAmt, maxAmount, price) {
+	console.log(`--> findSellTrade: assets=[${assets}], ${minAmt}, ${maxAmount}, ${price}`)
 	const router = sdk.api.router
-	console.log(opp)
-	const trade = (opp.trade == "sell") ? await router.getBestSell(...p) : await router.getBestBuy(...p)
 
-	const agentInAmt = ag.balanceInt(opp.assets[0]);
-	if (agentInAmt.lte(trade.amountIn)) {
-		console.log(`WARN: blance too low, asset=${opp.assets[0]}, amount=${ag.balanceDec(opp.assets[0]).toString()}`)
-		return 
+	let trade = await router.getBestSell(...assets, maxAmount)
+	let execPrice = (new Big(trade.amountOut)).div(new Big(trade.amountIn))
+	if (execPrice.gte(price)) {
+		return [trade, execPrice]
 	}
 
-	return trade
+	trade = null
+	execPrice = null
+	let amtHigh = new Big(maxAmount)
+	let amtLow = new Big(minAmt)
+	let amt = new Big(minAmt)
+	for(let i = 0; i< BIN_SEARCH_ITER; i++) {
+		let t = await router.getBestSell(...assets, amt)
+		let tradePrice = (new Big(t.amountOut)).div(new Big(t.amountIn))
+
+		if (tradePrice.gte(price)) {
+			amtLow = amt
+			trade = t
+			execPrice = tradePrice
+
+			//NOTE: close enough
+			if (tradePrice.sub(price).lte(PRECISSION)) {
+				break
+			}
+		} else {
+			amtHigh = amt
+		}
+
+		//NOTE: make sure this doesn't have to be int
+		amt = amtLow.add((amtHigh.sub(amtLow)).div(TWO))
+	}
+
+	console.log("===")
+	console.log(`exec_price=${execPrice.toFixed(5)}, target_price=${price.toFixed(5)}`)
+	console.log(trade.toHuman())
+	console.log("===")
+	return [trade, execPrice]
+}
+
+async function findBuyTrade(assets, minAmt, maxAmount, price) {
+	console.log(`---> findBuyTrade: assets=[${assets}], ${minAmt}, ${maxAmount}, ${price}`)
+	const router = sdk.api.router
+
+	let trade = await router.getBestBuy(...assets, maxAmount)
+	let execPrice = (new Big(trade.amountIn)).div(new Big(trade.amountOut))
+	if (execPrice.lte(price)) {
+		return [trade, execPrice]
+	}
+
+	trade = null
+	execPrice = null
+	let amtHigh = new Big(maxAmount)
+	let amtLow = new Big(minAmt)
+	let amt = new Big(minAmt)
+	for(let i = 0; i< BIN_SEARCH_ITER; i++) {
+		console.log(`amt=${amt.toFixed(5)}, amtLow=${amtLow.toFixed(5)}, amtHigh=${amtHigh.toFixed(5)}`)
+		let t = await router.getBestBuy(...assets, amt)
+		let tradePrice = (new Big(t.amountIn)).div(new Big(t.amountOut))
+
+		if (tradePrice.gte(price)) {
+			amtHigh = amt
+		} else {
+			amtLow = amt
+			trade = t
+			execPrice = tradePrice
+
+			//NOTE: close enough
+			if (price.sub(tradePrice).lte(PRECISSION)) {
+				break
+			}
+		}
+
+		//NOTE: make sure this doesn't have to be int
+		amt = amtLow.add((amtHigh.sub(amtLow)).div(TWO))
+	}
+
+	console.log("===")
+	console.log(`exec_price=${execPrice.toFixed(5)}, target_price=${price.toFixed(5)}`)
+	console.log(trade.toHuman())
+	console.log("===")
+	return [trade, execPrice]
+}
+
+async function findTrade(opp, ag) {
+	console.log(opp)
+	if (opp.trade == "sell") {
+		await findSellTrade(opp.assets, opp.minAmount, opp.maxAmount, opp.targetPriceUSD)
+	} else {
+		await findBuyTrade(opp.assets, opp.minAmount, opp.maxAmount, opp.targetPriceUSD)
+	}
+
+	// const p = [...opp.assets, opp.amount]
+	// const router = sdk.api.router
+	// const trade = (opp.trade == "sell") ? await router.getBestSell(...p) : await router.getBestBuy(...p)
+	//
+	// const agentInAmt = ag.balanceInt(opp.assets[0]);
+	// if (agentInAmt.lte(trade.amountIn)) {
+	// 	console.log(`WARN: blance too low, asset=${opp.assets[0]}, amount=${ag.balanceDec(opp.assets[0]).toString()}`)
+	// 	return
+	// }
+	//
+	// console.log(trade.toHuman())
+	//
+	// return trade
 }
 
 
@@ -94,13 +193,13 @@ async function findTrade(opp, ag) {
 			console.log(`INFO: opportunity=${opp.trade}, assets=[${opp.assets}], price=${opp.price}, amount=${opp.amount}`)
 			const trade = await findTrade(opp, ag)
 			if (trade) {
-				trades.push([trade, opp.slippage]);
+				trades.push(trade);
 			}
 		}
 
 		if (header.number % cfg.cooldown == 0) {
 			if (trades.length == 0) {
-				console.log(`INFO: no trades foun in block=${header.number}`)
+				console.log(`INFO: no trades found in block=${header.number}`)
 			} else {
 				await executeTrades(ag, trades)
 				console.log(`INFO: trades submitted`)
@@ -114,7 +213,7 @@ async function findTrade(opp, ag) {
 })(cfg)
 
 async function executeTrades(ag, trades) {
-	let nonce = (await api.query.system.account(ag.address)).nonce * 1 + 1;
+	let nonce = await api.rpc.system.accountNextIndex(ag.address);
 
 	const txs = []
 	for (const t of trades)	{

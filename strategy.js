@@ -42,9 +42,9 @@ export class Strategy {
 			console.log(`INFO: id: ${p.id}, price=${p.price.toFixed(3)}[${p.id}/H], target_usd_price=${usdPrice.toFixed(3)}[$/${p.id}], target_price=${targetPrice.toFixed(3)}[${p.id}/H], buy_at=${buyAt.toFixed(3)}[${p.id}/H], sell_at=${sellAt.toFixed(3)}[${p.id}/H]`)
 
 			if (p.price.gte(sellAt)) {
-				opps.push(this.#newHollarOpp("sell", cfg.assetId, cfg.sell.amount, p.price.toString(), sellAt));
+				opps.push(this.#newHollarOpp("sell", cfg.assetId, cfg.sell.minAmount, cfg.sell.maxAmount, p.price.toString(), sellAt));
 			} else if (p.price.lte(buyAt)) {
-				opps.push(this.#newHollarOpp("buy", cfg.assetId, cfg.buy.amount, p.price.toString(), buyAt));
+				opps.push(this.#newHollarOpp("buy", cfg.assetId, cfg.buy.minAmount, cfg.buy.maxAmount, p.price.toString(), buyAt));
 			}
 		}
 
@@ -73,25 +73,26 @@ export class Strategy {
 	}
 
 	async #getUSDPrice(assetId) {
-		let p
+		let oracleEntry
 		switch (assetId) {
 			case "1000745": //sUSDS
-				p = await this.#mmOracle.getData("0x4b32bffc6acd751446e79e8687ef3815fd7924fd")
-				return toDecimal(new Big(p.price.toString()), p.decimals)
+				oracleEntry = await this.#mmOracle.getData("0x4b32bffc6acd751446e79e8687ef3815fd7924fd")
+				return toDecimal(new Big(oracleEntry.price.toString()), oracleEntry.decimals)
 			case "1000625": //sUSDe
-				p = await this.#mmOracle.getData("0x22cdea305cee63d082e79f8c5db939eecd0265d0")
-				return toDecimal(new Big(p.price.toString()), p.decimals)
+				oracleEntry = await this.#mmOracle.getData("0x22cdea305cee63d082e79f8c5db939eecd0265d0")
+				return toDecimal(new Big(oracleEntry.price.toString()), oracleEntry.decimals)
 			default:
 				return ONE	
 		}
 	}
 
-	#newHollarOpp(type, assetId, amount, price, targetPrice) {
+	#newHollarOpp(type, assetId, minAmount, maxAmount, price, targetPrice) {
 		assert.ok(type == "buy" || type == "sell", `"type" parameter must be one of ["buy", "sell"], type="${type}"`)
 		if (type == "sell") {
-			return { trade: "sell", assets: [this.#hollar, assetId], amount: amount, price: price, targetPriceUSD: targetPrice };
+			//TODO: rename targetPriceUSD -> targetPriceHollar
+			return { trade: "sell", assets: [this.#hollar, assetId], minAmount: minAmount, maxAmount: maxAmount, price: price, targetPriceUSD: targetPrice };
 		} else {
-			return { trade: "buy",  assets: [assetId, this.#hollar], amount: amount, price: price, targetPriceUSD: targetPrice };
+			return { trade: "buy",  assets: [assetId, this.#hollar], minAmount: minAmount, maxAmount: maxAmount, price: price, targetPriceUSD: targetPrice };
 		}
 	}
 }

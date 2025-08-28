@@ -1,26 +1,26 @@
 {
-  "endpoint": "wss://1.lark.hydration.cloud",
-  "cooldown": 3,
+  "endpoint": "ws://127.0.0.1:9999",
+  "cooldown": 1,
   "assets": {
     "sUSDe": {
       "assetId": "1000625",
-      "buy":	{ "priceDiff": "0.01", "amount": "5000" }, 
-      "sell": { "priceDiff": "0.01", "amount": "5000" }
+      "buy":	{ "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" },
+      "sell": { "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" }
     },
     "sUSDS": {
       "assetId": "1000745",
-      "buy":	{ "priceDiff": "0.01", "amount": "5000" }, 
-      "sell": { "priceDiff": "0.01", "amount": "5000" }
+      "buy":	{ "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "100000000" },
+      "sell": { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "100000000" }
     },
     "USDT(Tether)": {
       "assetId": "10",
-      "buy":  { "priceDiff": "0.01", "amount": "5000" }, 
-      "sell": { "priceDiff": "0.01", "amount": "5000" }
+      "buy":  { "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" },
+      "sell": { "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" }
     },
     "USDC": {
       "assetId": "22",
-      "buy":	{ "priceDiff": "0.01", "amount": "5000" }, 
-      "sell": { "priceDiff": "0.01", "amount": "5000" }
+      "buy":	{ "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" },
+      "sell": { "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" }
     }
   }
 }
