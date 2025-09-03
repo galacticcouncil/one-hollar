@@ -14,13 +14,13 @@
     },
     "USDT(Tether)": {
       "assetId": "10",
-      "buy":  { "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" },
-      "sell": { "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" }
+      "buy":  { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "100000000" },
+      "sell": { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "100000000" }
     },
     "USDC": {
       "assetId": "22",
-      "buy":	{ "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" },
-      "sell": { "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" }
+      "buy":	{ "priceDiff": "0.0001", "minAmount": "5000", "maxAmount": "100000000" },
+      "sell": { "priceDiff": "0.0001", "minAmount": "5000", "maxAmount": "100000000" }
     }
   }
 }
