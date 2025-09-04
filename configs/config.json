@@ -4,23 +4,23 @@
   "assets": {
     "sUSDe": {
       "assetId": "1000625",
-      "buy":	{ "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" },
-      "sell": { "priceDiff": "0.01", "minAmount": "5000", "maxAmount": "100000000" }
+      "buy":	{ "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "1000000" },
+      "sell": { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "1000000" }
     },
     "sUSDS": {
       "assetId": "1000745",
-      "buy":	{ "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "100000000" },
-      "sell": { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "100000000" }
+      "buy":	{ "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "1000000" },
+      "sell": { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "1000000" }
     },
     "USDT(Tether)": {
       "assetId": "10",
-      "buy":  { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "100000000" },
-      "sell": { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "100000000" }
+      "buy":  { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "1000000" },
+      "sell": { "priceDiff": "0.001", "minAmount": "5000", "maxAmount": "1000000" }
     },
     "USDC": {
       "assetId": "22",
-      "buy":	{ "priceDiff": "0.0001", "minAmount": "5000", "maxAmount": "100000000" },
-      "sell": { "priceDiff": "0.0001", "minAmount": "5000", "maxAmount": "100000000" }
+      "buy":	{ "priceDiff": "0.0001", "minAmount": "5000", "maxAmount": "1000000" },
+      "sell": { "priceDiff": "0.0001", "minAmount": "5000", "maxAmount": "1000000" }
     }
   }
 }

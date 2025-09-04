@@ -4,11 +4,11 @@ import { ApiPromise } from '@polkadot/api';
 import assert from 'node:assert';
 import Big from 'big.js';
 
-const BIN_SEARCH_ITER = 20;
-const ZERO = new Big("0")
-const ONE = new Big("1.0")
-const TWO = new Big("2.0")
+const SEARCH_ITER = 20;
+const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new Big("100")]
 const PRECISSION = new Big("0.0001")
+const PEEK_MULTIPLIER = new Big("0.1") //10%
+
 
 export class Strategy {
 	#sdk
@@ -38,28 +38,29 @@ export class Strategy {
 
 		const opps = []
 		for (const p of prices) {
-			const cfg = this.#config[p.id]
-			const aId = cfg.assetId
-			assert.ok(aId, `config not for assetId=${p.id}`)
+			const [cfg, assetId] = [this.#config[p.id], this.#config[p.id].assetId]
+			assert.ok(assetId, `config not for assetId=${p.id}`)
 
-			const usdPrice = await this.#getUSDPrice(aId)
+			const usdPrice = await this.#getUSDPrice(assetId)
 			const targetPrice = ONE.div(usdPrice)
 			const sellAt = ONE.div(usdPrice.sub(usdPrice.mul(cfg.sell.priceDiff)))
 			const buyAt = ONE.div(usdPrice.add(usdPrice.mul(cfg.buy.priceDiff)))
+
 			console.log(`INFO: id: ${p.id}, price=${p.price.toFixed(5)}[${p.id}/H], target_usd_price=${usdPrice.toFixed(5)}[$/${p.id}], target_price=${targetPrice.toFixed(5)}[${p.id}/H], buy_at_limit=${buyAt.toFixed(5)}[${p.id}/H], sell_at_limit=${sellAt.toFixed(5)}[${p.id}/H]`)
 
-			let trade 
+			let trade, profit, profitUSD
 			if (p.price.gte(sellAt)) {
-				let [t, execPrice] = await this.findSellTrade([this.#hollar, cfg.assetId], cfg.sell.minAmount, cfg.sell.maxAmount, sellAt)
-				trade = t
+				[trade, profit, profitUSD] = await this.findTrade([this.#hollar, assetId], cfg.sell.minAmount, cfg.sell.maxAmount, usdPrice,
+					(assetIn, assetOut, amount ) =>  { return this.#router.getBestSell(assetIn, assetOut, amount)})
 			} else if (p.price.lte(buyAt)) {
-				let [t, execPrice] = await this.findBuyTrade([cfg.assetId, this.#hollar], cfg.sell.minAmount, cfg.sell.maxAmount, buyAt)
-				trade = t 
+				[trade, profit, profitUSD] = await this.findTrade([assetId, this.#hollar], cfg.sell.minAmount, cfg.sell.maxAmount, usdPrice,
+					(assetIn, assetOut, amount ) =>  { return this.#router.getBestBuy(assetIn, assetOut, amount)})
 			}
 
 			if (trade) {
 				opps.push(trade);
 				console.log(trade.toHuman())
+				console.log(`profit=${(profit.mul(HUNDRED)).toFixed(5)}[%], profitUSD=${profitUSD.toFixed(5)}[$]`)
 				process.exit(1)
 			}
 		}
@@ -89,6 +90,7 @@ export class Strategy {
 	}
 
 	async #getUSDPrice(assetId) {
+		//TODO: load oracles' addresses from chain
 		let oracleEntry
 		switch (assetId) {
 			case "1000745": //sUSDS
@@ -102,95 +104,80 @@ export class Strategy {
 		}
 	}
 
-	#newHollarOpp(type, assetId, minAmount, maxAmount, price, targetPrice) {
-		assert.ok(type == "buy" || type == "sell", `"type" parameter must be one of ["buy", "sell"], type="${type}"`)
-		if (type == "sell") {
-			//TODO: rename targetPriceUSD -> targetPriceHollar
-			return { trade: "sell", assets: [this.#hollar, assetId], minAmount: minAmount, maxAmount: maxAmount, price: price, targetPriceUSD: targetPrice };
+	#calcProfit(assetIn, assetOut, trade, oraclePrice) {
+		const amtIn = new Big(toDecimal(trade.amountIn, this.#registry.decimals(assetIn)))
+		const amtOut = new Big(toDecimal(trade.amountOut, this.#registry.decimals(assetOut)))
+
+		let amtInUSD, amtOutUSD, profit, profitUSD
+		if (trade.type == "Sell") {
+			//assetIn is Hollar which is always 1$
+			[amtInUSD, amtOutUSD] = [amtIn, amtOut.mul(oraclePrice)]
 		} else {
-			return { trade: "buy",  assets: [assetId, this.#hollar], minAmount: minAmount, maxAmount: maxAmount, price: price, targetPriceUSD: targetPrice };
+			//assetOut is Hollar which is always 1$
+			[amtInUSD, amtOutUSD] = [amtIn.mul(oraclePrice), amtOut]
 		}
+
+		profit = (amtOutUSD.minus(amtInUSD)).div(amtInUSD)
+		profitUSD = amtOutUSD.minus(amtInUSD)
+
+		return [amtIn, amtOut, amtInUSD, amtOutUSD, profit, profitUSD]
 	}
 
-
-
-	async findSellTrade(assets, minAmt, maxAmount, price) {
-		console.log(`--> findSellTrade: assets=[${assets}], ${minAmt}, ${maxAmount}, ${price}`)
-		const limitPrice = new Big(price)
+	async findTrade(assets, minAmount, maxAmount, oraclePrice, getBestTradeFn) {
 		let trade
-		let execPrice = new Big(0)
-		let amtHigh = new Big(maxAmount)
-		let amtLow = new Big(minAmt)
-		let amt = new Big(0)
-		for (let i = 0; i< BIN_SEARCH_ITER; i++) {
-			amt = amtLow.add((amtHigh.sub(amtLow)).div(TWO))
-			console.log(`${i}: amt=${amt.toFixed(5)}, amtLow=${amtLow.toFixed(5)}, amtHigh=${amtHigh.toFixed(5)}`)
-			if (amtLow.eq(amtHigh)) {
-				break
+		let oPrice = new Big(oraclePrice) //$ price for non-Hollar asset
+		let [profitUSD, profit] = [new Big(0), new Big(0)]
+		let [amt, amtLow, amtHigh] = [new Big(minAmount), new Big(minAmount), new Big(maxAmount)]
+		let [minTrade, maxTrade] = [new Big(minAmount), new Big(maxAmount)]
+
+		//TODO: optimize so it won't always do all `SEARCH_ITER`
+		for (let i = 0; i< SEARCH_ITER; i++) {
+			let t = await getBestTradeFn(...assets, amt)
+			let [_tAmtIn, _tAmtOut, _tAmtInUSD, _tAmtOutUSD, tProfit, tProfitUSD] = this.#calcProfit(...assets, t, oPrice)
+
+			if (tProfitUSD.gt(profitUSD)) {
+				trade = t
+				profit = tProfit
+				profitUSD = tProfitUSD
 			}
 
-			let t = await this.#router.getBestSell(...assets, amt)
-			const amtIn = new Big(toDecimal(t.amountIn, this.#registry.decimals(assets[0])))
-			const amtOut = new Big(toDecimal(t.amountOut, this.#registry.decimals(assets[1])))
-			const tPrice = amtOut.div(amtIn) //[a]/[H]
+			//NOTE: peek which direction to go
+			const peek = amt.mul(PEEK_MULTIPLIER)
+			const tmpAmt1 = min(amt.plus(peek), maxTrade)
+			const tmpAmt2 = max(amt.minus(peek), minTrade)
 
-			console.log(`amt_in=${amtIn}, amtOut=${amtOut}, price=${tPrice.toFixed(5)}, limit_price=${limitPrice.toFixed(5)}`)
-			if (tPrice.gte(limitPrice) && amountOut.gt(ONE)) {
+			let t1 = await getBestTradeFn(...assets, tmpAmt1)
+			let [_t1AmtIn, _t1AmtOut, _t1AmtInUSD, _t1AmtOutUSD, t1Profit, t1ProfitUSD] = this.#calcProfit(...assets, t1, oPrice)
+
+			let t2 = await getBestTradeFn(...assets, tmpAmt2)
+			let [_t2AmtIn, _t2AmtOut, _t2AmtInUSD, _t2AmtOutUSD, t2Profit, t2ProfitUSD] = this.#calcProfit(...assets, t2, oPrice)
+
+			if (t1ProfitUSD.gt(t2ProfitUSD)) {
 				amtLow = amt
-				trade = t
-				execPrice = tPrice
-
-				if (tPrice.minus(limitPrice).abs().lte(PRECISSION)) {
-					//NOTE: close enough
-					break
-				}
 			} else {
 				amtHigh = amt
 			}
+			amt = amtLow.plus((amtHigh.sub(amtLow)).div(TWO))
 		}
 
-		console.log("-- find sell end --")
-		return [trade, execPrice]
+		return [trade, profit, profitUSD]
+	}
+}
+
+function min(a, b) {
+	if (a.lt(b)) {
+		return a
 	}
 
-	async findBuyTrade(assets, minAmt, maxAmount, price) {
-		console.log(`---> findBuyTrade: assets=[${assets}], ${minAmt}, ${maxAmount}, ${price}`)
-		const limitPrice = new Big(price)
-		let trade
-		let execPrice = new Big(0)
-		let amtHigh = new Big(maxAmount)
-		let amtLow = new Big(minAmt)
-		let amt = new Big(0)
-		for(let i = 0; i< BIN_SEARCH_ITER; i++) {
-			amt = amtLow.add((amtHigh.sub(amtLow)).div(TWO))
-			console.log(`amt=${amt.toFixed(5)}, amtLow=${amtLow.toFixed(5)}, amtHigh=${amtHigh.toFixed(5)}`)
-			if (amtLow.eq(amtHigh)) {
-				break
-			}
+	return b
+}
 
-			let t = await this.#router.getBestBuy(...assets, amt)
-			const amtIn = new Big(toDecimal(t.amountIn, this.#registry.decimals(assets[0])))
-			const amtOut = new Big(toDecimal(t.amountOut, this.#registry.decimals(assets[1])))
-			console.log(`---> amtIn=${t.amountIn}, amtOut=${amtOut}`)
-			let tPrice = amtIn.div(amtOut) //[a]/[H]
-
-			console.log(`---> trade_price=${tPrice.toFixed(6)}, price=${limitPrice.toFixed(5)}`)
-			if (tPrice.lte(limitPrice) && amtIn.gt(ONE)) {
-				amtLow = amt
-				trade = t
-				execPrice = tPrice
-
-				if (tPrice.minus(limitPrice).abs().lte(PRECISSION)) {
-					//NOTE: close enough
-					break
-				}
-			} else {
-				amtHigh = amt
-			}
-		}
-
-		return [trade, execPrice]
+function max(a, b) {
+	if (a.gt(b)) {
+		return a
 	}
+
+	return b
 }
 
 function toDecimal(num, decimals) {
