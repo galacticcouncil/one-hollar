@@ -93,8 +93,10 @@ class AssetRegistry {
 		}
 
 		if (header.number % cfg.cooldown == 0) {
-			await executeTrades(ag, trades);
-			console.log(`INFO: trades submitted`);
+			if (trades.length != 0) {
+				await executeTrades(ag, trades);
+				console.log(`INFO: trades submitted`);
+			}
 		} else {
 			console.log(`INFO: chilling...`);
 		}
