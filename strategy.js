@@ -9,6 +9,11 @@ const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new
 const PRECISSION = new Big("0.0001")
 const PEEK_MULTIPLIER = new Big("0.1") //10%
 
+//Price can cange up to this value per block => ~16.6h to change price by 1 cent
+const ORACLE_UPDATE_SPEED = new Big("0.000001")
+
+const sUSDS = "1000745";
+const sUSDe = "1000625";
 
 export class Strategy {
 	#sdk
@@ -18,6 +23,7 @@ export class Strategy {
 	#registry
 	#router
 	#agent
+	#lastPrices
 
 	constructor(sdk, evm, config, hollar, assetRegistry, agent) {
 		this.#sdk = sdk;
@@ -27,6 +33,13 @@ export class Strategy {
 		this.#registry = assetRegistry;
 		this.#agent = agent;
 		this.#router = sdk.api.router;
+		this.#lastPrices = {};
+	}
+
+	//Function load and set values necessary to use strategy
+	async initialize() {
+		this.#lastPrices[sUSDS] = await this.#getRawUSDPrice(sUSDS);
+		this.#lastPrices[sUSDe] = await this.#getRawUSDPrice(sUSDe);
 	}
 
 	async findOpportunities() {
@@ -101,18 +114,38 @@ export class Strategy {
 	}
 
 	async #getUSDPrice(assetId) {
-		//TODO: load oracles' addresses from chain
+		if (assetId != sUSDS && assetId != sUSDe) {
+			return new Big(ONE)
+		}
+
+		const newPrice = await this.#getRawUSDPrice(assetId);
+		if (newPrice.gt(this.#lastPrices[assetId])) {
+			let delta = newPrice.minus(this.#lastPrices[assetId])
+			if (delta.gt(ORACLE_UPDATE_SPEED)) {
+				delta = ORACLE_UPDATE_SPEED
+			}
+			this.#lastPrices[assetId] = this.#lastPrices[assetId].plus(delta);
+		}
+
+		return new Big(this.#lastPrices[assetId]);
+	}
+
+	//Function retuns raw oracle price without smoothing
+	async #getRawUSDPrice(assetId) {
+		//TODO: loadconsoleoracles' addresses from chain
 		let oracleEntry;
 		switch (assetId) {
-			case "1000745": //sUSDS
+			case sUSDS:
 				oracleEntry = await this.#mmOracle.getData("0x4b32bffc6acd751446e79e8687ef3815fd7924fd");
-				return toDecimal(new Big(oracleEntry.price.toString()), oracleEntry.decimals);
-			case "1000625": //sUSDe
+				break;
+			case sUSDe:
 				oracleEntry = await this.#mmOracle.getData("0x22cdea305cee63d082e79f8c5db939eecd0265d0");
-				return toDecimal(new Big(oracleEntry.price.toString()), oracleEntry.decimals);
+				break;
 			default:
-				return ONE;	
+				throw new Error(`unsupported oracle asset. asset_id=${assetId}`)
 		}
+
+		return toDecimal(new Big(oracleEntry.price.toString()), oracleEntry.decimals);
 	}
 
 	#calcProfit(assetIn, assetOut, trade, oraclePrice) {

@@ -69,6 +69,7 @@ class AssetRegistry {
 	agAssets.push(HOLLAR);
 	const ag = new Agent(api, secretPath, secretPwd, agAssets, reg);
 	const s = new Strategy(sdk, evm, cfg.assets, HOLLAR, reg, ag);
+	await s.initialize()
 
 	api.derive.chain.subscribeNewHeads(async (header) => {
 		console.log(`INFO: START processing block=${header.number}`)
