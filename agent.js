@@ -4,8 +4,9 @@ import { Keyring } from '@polkadot/keyring';
 import assert from 'node:assert';
 import fs from 'fs';
 import Big from 'big.js';
+import { toDecimal } from './utils.js';
 
-const ZERO = new Big(0.0)
+const ZERO = new Big(0.0);
 
 export class Agent {
 	#api
@@ -91,9 +92,4 @@ export class Agent {
 
 		console.log(`AGENT: address=${this.address}${balances}`);
 	}
-}
-
-function toDecimal(num, decimals) {
-  const divisor = Big(10).pow(decimals);
-  return num.div(divisor);
 }

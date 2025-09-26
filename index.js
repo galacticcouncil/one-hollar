@@ -1,8 +1,8 @@
-import { createSdkContext, AssetClient, EvmClient  } from '@galacticcouncil/sdk';
+import { createSdkContext, EvmClient  } from '@galacticcouncil/sdk';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { Strategy } from './strategy.js'
 import { Agent } from './agent.js'
-import { strict as assert } from 'node:assert';
+import { AssetRegistry } from './assetRegisty.js'
 import Big from 'big.js';
 import fs from 'fs';
 const cfgDir = `./configs`
@@ -17,41 +17,6 @@ const sdk = await createSdkContext(api);
 const HOLLAR = "222";
 
 const HUNDRED = new Big("100");
-
-class AssetRegistry {
-	#api
-	#assets
-
-	constructor(api) {
-		this.#api = new AssetClient(api);
-		this.#assets = {};
-	}
-
-	decimals(assetId) {
-		assert.ok(this.#assets, "asset registry is undefined");
-		const asset = this.#assets[assetId];
-		assert.ok(asset, `missing asset=${assetId}`);
-		assert.ok(asset.decimals && asset.decimals > 0, `invalid asset's decimals, asset=${assetId}, decimals=${asset.decimals}`);
-
-		return asset.decimals;
-	}
-	
-	symbol(assetId) {
-		assert.ok(this.#assets, "asset registry is undefined");
-		const asset = this.#assets[assetId];
-		assert.ok(asset, `missing asset=${assetId}`);
-		assert.ok(asset.symbol && asset.symbol != "", `invalid asset's symbol, asset=${assetId}, symbol=${asset.symbol}`);
-
-		return asset.symbol;
-	}
-
-	async update() {
-		const assets = await this.#api.getOnChainAssets();
-		assets.forEach(a => {
-			this.#assets[a.id] = a
-		});
-	}
-}
 
 (async function main(cfg) {
 	const secretPwd = process.env.SECRET_PASSWORD;
@@ -70,6 +35,7 @@ class AssetRegistry {
 	const ag = new Agent(api, secretPath, secretPwd, agAssets, reg);
 	const s = new Strategy(sdk, evm, cfg.assets, HOLLAR, reg, ag);
 	await s.initialize()
+
 
 	api.derive.chain.subscribeNewHeads(async (header) => {
 		console.log(`INFO: START processing block=${header.number}`)
@@ -134,8 +100,8 @@ function loadConfig(path) {
 	const cfg = JSON.parse(fs.readFileSync(path))
 
 	for (const [_, val] of Object.entries(cfg.assets))	{
-		val.buy.priceDiff = new Big(val.buy.priceDiff)
-		val.sell.priceDiff = new Big(val.sell.priceDiff)
+		val.buy.threshold = new Big(val.buy.threshold)
+		val.sell.threshold = new Big(val.sell.threshold)
 	}
 
 	return cfg
