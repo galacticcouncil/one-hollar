@@ -89,7 +89,7 @@ export class Strategy {
 			}
 
 			if (trade) {
-				const slippage = (trade.type == "Sell") ? ((ONE.minus(cfg.sell.threshold)).div(TWO) : (cfg.buy.threshold.minus(ONE)).div(TWO)
+				const slippage = (trade.type == "Sell") ? (ONE.minus(cfg.sell.threshold)).div(TWO) : (cfg.buy.threshold.minus(ONE)).div(TWO)
 				opps.push(new Opportunity(assets, trade, profit, profitUSD, slippage));
 			}
 		}

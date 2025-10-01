@@ -5,8 +5,11 @@ import { Agent } from './agent.js'
 import { AssetRegistry } from './assetRegisty.js'
 import Big from 'big.js';
 import fs from 'fs';
-import { Config } from '.config.js';
-const cfg = new Config(`./configs/config.json`)
+import { Config } from './config.js';
+
+
+const cfgDir = "./configs"
+const cfg = new Config(`${cfgDir}/config.json`)
 
 const wsProvider = new WsProvider(cfg.endpoint, 2_500, {}, 60_000, 102400, 10 * 60_000);
 
