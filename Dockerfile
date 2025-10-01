@@ -6,7 +6,7 @@ WORKDIR /home/node/bot
 COPY * ./
 RUN chown -R node: /home/node/bot
 USER node
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 
 CMD ["node", "index.js"]

@@ -1,4 +1,4 @@
-import {MmOracleClient} from '@galacticcouncil/sdk';
+import { MmOracleClient } from '@galacticcouncil/sdk';
 import { big } from '@galacticcouncil/sdk-next';
 import { ApiPromise } from '@polkadot/api';
 import assert from 'node:assert';
@@ -6,9 +6,10 @@ import Big from 'big.js';
 import { toDecimal } from './utils.js';
 
 const SEARCH_ITER = 20;
-const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new Big("100")]
+const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new Big("100")];
 //Percentage increase/decrease used when we are peekig for direction in trade's amount search
-const PEEK_SIZE = new Big("0.1") //10%
+const PEEK_SIZE = new Big("0.1"); //10%
+const SLIPPAGE_MULTIPLIER = new Big("50"); // 50% of config.assets["xxx"].[buy|sell].threshold
 
 //Price can cange up to this value per block => ~16.6h to change price by 1 cent
 const ORACLE_UPDATE_SPEED = new Big("0.000001")
@@ -88,7 +89,7 @@ export class Strategy {
 			}
 
 			if (trade) {
-				const slippage = (trade.type == "Sell") ? cfg.sell.priceDiff.div(TWO) : cfg.buy.priceDiff.div(TWO)
+				const slippage = (trade.type == "Sell") ? ((ONE.minus(cfg.sell.threshold)).div(TWO) : (cfg.buy.threshold.minus(ONE)).div(TWO)
 				opps.push(new Opportunity(assets, trade, profit, profitUSD, slippage));
 			}
 		}

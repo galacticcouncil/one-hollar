@@ -1,6 +1,6 @@
 {
-  "endpoint": "wss://rpc.hydradx.cloud",
-  "cooldown": 1,
+  "endpoint": "ws://127.0.0.1:9944",
+  "cooldown": 3,
   "assets": {
     "sUSDe": {
       "assetId": "1000625",

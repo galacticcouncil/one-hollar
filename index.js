@@ -5,8 +5,8 @@ import { Agent } from './agent.js'
 import { AssetRegistry } from './assetRegisty.js'
 import Big from 'big.js';
 import fs from 'fs';
-const cfgDir = `./configs`
-const cfg = loadConfig(`${cfgDir}/config.json`)
+import { Config } from '.config.js';
+const cfg = new Config(`./configs/config.json`)
 
 const wsProvider = new WsProvider(cfg.endpoint, 2_500, {}, 60_000, 102400, 10 * 60_000);
 
@@ -50,7 +50,7 @@ const HUNDRED = new Big("100");
 
 			const assetIn = opp.assets[0];
 			if (ag.balanceInt(assetIn).gte(opp.trade.amountIn)) {
-				//NOTE: we don't track received amount intentionally. We don't want to count with received amount from previous trades
+				//NOTE: we don't track received amount intentionally. We don't want to count with received amount from previous trades.
 				ag.sub(assetIn, opp.trade.amountIn);
 				trades.push([opp.trade, opp.slippage])
 			} else {
@@ -94,15 +94,4 @@ async function executeTrades(ag, trades) {
 			unsub();
 		}
 	})
-}
-
-function loadConfig(path) {
-	const cfg = JSON.parse(fs.readFileSync(path))
-
-	for (const [_, val] of Object.entries(cfg.assets))	{
-		val.buy.threshold = new Big(val.buy.threshold)
-		val.sell.threshold = new Big(val.sell.threshold)
-	}
-
-	return cfg
 }
