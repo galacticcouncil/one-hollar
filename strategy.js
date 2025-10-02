@@ -10,6 +10,10 @@ const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new
 const PEEK_SIZE = new Big("0.1"); //10%
 const SLIPPAGE = new Big("0.5"); //1/2 of profit
 
+//99.5% of agent balance will be used for trades
+const MAX_BALANCE_USED = new Big("0.995");
+
+
 export class Strategy {
 	#config 
 	#hollar
@@ -55,13 +59,13 @@ export class Strategy {
 			let trade, profit, profitUSD, assets;
 			if (price.val.gte(sellAt)) {
 				let minTrade = new Big(cfg.sell.minAmount);
-				let maxTrade = min(new Big(cfg.sell.maxAmount), this.#agent.balanceDec(this.#hollar));
+				let maxTrade = min(new Big(cfg.sell.maxAmount), this.#agent.balanceDec(this.#hollar).multipliedBy(MAX_BALANCE_USED));
 
 				assets = [this.#hollar, assetId];
 				[trade, profit, profitUSD] = await this.findTrade(assets, minTrade, maxTrade, priceUSD,
 					(assetIn, assetOut, amount ) =>  { return this.#router.getBestSell(assetIn, assetOut, amount)});
 			} else if (price.val.lte(buyAt)) {
-				const t = await this.#router.getBestSell(assetId, this.#hollar, min(new Big(cfg.sell.maxAmount), this.#agent.balanceDec(assetId)))
+				const t = await this.#router.getBestSell(assetId, this.#hollar, min(new Big(cfg.sell.maxAmount), this.#agent.balanceDec(assetId).multipliedBy(MAX_BALANCE_USED)));
 				const amtOut = new Big(toDecimal(t.amountOut, this.#registry.decimals(this.#hollar)));
 
 				let minTrade = new Big(cfg.buy.minAmount);
@@ -73,7 +77,7 @@ export class Strategy {
 			}
 
 			if (trade) {
-				const slippage = profit.mul(SLIPPAGE)
+				const slippage = min(profit.mul(SLIPPAGE), new Big("0.005"));
 				opps.push(new Opportunity(assets, trade, profit, profitUSD, slippage));
 			}
 		}

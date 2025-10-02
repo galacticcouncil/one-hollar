@@ -46,8 +46,8 @@ const HUNDRED = new Big("100");
 	api.derive.chain.subscribeNewHeads(async (header) => {
 		console.log(`INFO: START processing block=${header.number}`)
 		await ag.updateBalances();
-		const opps = await s.findOpportunities();
 
+		const opps = await s.findOpportunities();
 		opps.sort((a, b) => (a.profitUSD.cmp(b.profitUSD) * -1));
 		const txs = [];
 		for (const opp of opps) {
@@ -62,8 +62,8 @@ const HUNDRED = new Big("100");
 					.build();
 
 				const res = await tx.dryRun(ag.address);
-				if (!res.isOk) {
-					console.warn(`WARN: skipping, failed to dryRun transaction, tx=${tx.hex}, reason=${res.asErr.toHuman()}`);
+				if (!res.executionResult.isOk) {
+					console.warn(`WARN: skipping, failed to dryRun transaction, tx=${tx.hex}, reason=${JSON.stringify(res.executionResult.asErr.toHuman())}`);
 					continue;
 				}
 
