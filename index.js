@@ -1,20 +1,20 @@
 import { createSdkContext, EvmClient  } from '@galacticcouncil/sdk';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { Strategy } from './strategy.js'
-import { Agent } from './agent.js'
+import { Agent, loadSigner } from './agent.js'
 import { AssetRegistry } from './assetRegisty.js'
+import { CoinGecko } from './oracles/coingecko.js'
 import Big from 'big.js';
 import fs from 'fs';
 import { Config } from './config.js';
 
-
 const cfgDir = "./configs"
 const cfg = new Config(`${cfgDir}/config.json`)
 
-const wsProvider = new WsProvider(cfg.endpoint, 2_500, {}, 60_000, 102400, 10 * 60_000);
+const wsProvider = new WsProvider(cfg.url, 2_500, {}, 60_000, 102400, 10 * 60_000);
 
 const api = await ApiPromise.create({
-  provider: wsProvider,
+	provider: wsProvider,
 });
 const sdk = await createSdkContext(api);
 const HOLLAR = "222";
@@ -32,13 +32,16 @@ const HUNDRED = new Big("100");
 	const reg = new AssetRegistry(api);
 	await reg.update();
 
-	const evm = new EvmClient(api);
 	const agAssets = Object.values(cfg.assets).map(v => v.assetId);
 	agAssets.push(HOLLAR);
-	const ag = new Agent(api, secretPath, secretPwd, agAssets, reg);
-	const s = new Strategy(sdk, evm, cfg.assets, HOLLAR, reg, ag);
-	await s.initialize()
+	let signer = loadSigner(secretPath, secretPwd);
+	const ag = new Agent(api, agAssets, reg, signer);
 
+	const oracle = new CoinGecko(cfg);
+	const now = (await api.rpc.chain.getHeader()).number.toNumber();
+	await oracle.updateUSDPrices(now);
+
+	const s = new Strategy(sdk, cfg.assets, HOLLAR, reg, ag, oracle);
 
 	api.derive.chain.subscribeNewHeads(async (header) => {
 		console.log(`INFO: START processing block=${header.number}`)
@@ -46,16 +49,27 @@ const HUNDRED = new Big("100");
 		const opps = await s.findOpportunities();
 
 		opps.sort((a, b) => (a.profitUSD.cmp(b.profitUSD) * -1));
-		const trades = [];
+		const txs = [];
 		for (const opp of opps) {
 			const t = opp.trade.toHuman();
 			console.log(`INFO(opportunity): asset=[${opp.assets}], type=${opp.trade.type}, amount_in=${t.amountIn}, amount_out=${t.amountOut}, profit=${opp.profit.mul(HUNDRED).toFixed(5)}, profit_usd=${opp.profitUSD.toFixed(5)}`);
 
 			const assetIn = opp.assets[0];
 			if (ag.balanceInt(assetIn).gte(opp.trade.amountIn)) {
+				const tx = await sdk.tx.trade(opp.trade)
+					.withBeneficiary(ag.address)
+					.withSlippage(opp.slippage.mul(HUNDRED))
+					.build();
+
+				const res = await tx.dryRun(ag.address);
+				if (!res.isOk) {
+					console.warn(`WARN: skipping, failed to dryRun transaction, tx=${tx.hex}, reason=${res.asErr.toHuman()}`);
+					continue;
+				}
+
 				//NOTE: we don't track received amount intentionally. We don't want to count with received amount from previous trades.
 				ag.sub(assetIn, opp.trade.amountIn);
-				trades.push([opp.trade, opp.slippage])
+				txs.push(tx.get())
 			} else {
 				console.log(`INFO: not enough balance to execute opportunity`);
 			}
@@ -63,29 +77,20 @@ const HUNDRED = new Big("100");
 		}
 
 		if (header.number % cfg.cooldown == 0) {
-			if (trades.length != 0) {
-				await executeTrades(ag, trades);
+			if (txs.length != 0) {
+				await executeTransactions(ag, txs);
 				console.log(`INFO: trades submitted`);
 			}
 		} else {
 			console.log(`INFO: chilling...`);
 		}
-		console.log(`INFO: opportunities=${(opps) ? opps.length : 0}, trades=${trades.length}`);
+		console.log(`INFO: opportunities=${(opps) ? opps.length : 0}, trades=${txs.length}`);
 		console.log(`INFO: DONE processing block=${header.number}`);
 	});
 })(cfg)
 
-async function executeTrades(ag, trades) {
+async function executeTransactions(ag, txs) {
 	let nonce = await api.rpc.system.accountNextIndex(ag.address);
-
-	const txs = []
-	for (const tData of trades)	{
-		txs.push((await sdk.tx.trade(tData[0])
-				.withBeneficiary(ag.address)
-				.withSlippage(tData[1])
-				.build())
-			.get())
-	}
 
 	const unsub = await api.tx.utility.forceBatch(txs).signAndSend(ag.signer, { nonce: nonce}, ({status, event, dispatchError}) => {
 		if (dispatchError) {

@@ -14,25 +14,16 @@ export class Agent {
 	#assets
 	#registry
 
-	constructor(api, secretPath, password, assets, assetRegistry) {
+	constructor(api, assets, assetRegistry, signer) {
 		this.#api = new BalanceClient(api);
 		this.#registry = assetRegistry;
-		this.#signer = this.#loadAccount(secretPath, password);
+		this.#signer = signer;
 
 		this.#assets = {};
 		assets.forEach(a => {
 			this.#assets[a] = new Big(0);
 		});
 
-	}
-
-	#loadAccount(path, password) {
-		const keyring = new Keyring( { type: 'sr25519'});
-		const p = JSON.parse(fs.readFileSync(path));
-		const pair = keyring.addFromJson(p);
-		pair.decodePkcs8(password);
-
-		return pair;
 	}
 
 	get address() {
@@ -92,4 +83,13 @@ export class Agent {
 
 		console.log(`AGENT: address=${this.address}${balances}`);
 	}
+}
+
+export function loadSigner(path, password) {
+	const keyring = new Keyring( { type: 'sr25519'});
+	const p = JSON.parse(fs.readFileSync(path));
+	const pair = keyring.addFromJson(p);
+	pair.decodePkcs8(password);
+
+	return pair;
 }

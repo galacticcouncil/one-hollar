@@ -1,4 +1,3 @@
-import { MmOracleClient } from '@galacticcouncil/sdk';
 import { big } from '@galacticcouncil/sdk-next';
 import { ApiPromise } from '@polkadot/api';
 import assert from 'node:assert';
@@ -9,39 +8,24 @@ const SEARCH_ITER = 20;
 const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new Big("100")];
 //Percentage increase/decrease used when we are peekig for direction in trade's amount search
 const PEEK_SIZE = new Big("0.1"); //10%
-const SLIPPAGE_MULTIPLIER = new Big("50"); // 50% of config.assets["xxx"].[buy|sell].threshold
-
-//Price can cange up to this value per block => ~16.6h to change price by 1 cent
-const ORACLE_UPDATE_SPEED = new Big("0.000001")
-
-const sUSDS = "1000745";
-const sUSDe = "1000625";
+const SLIPPAGE = new Big("0.5"); //1/2 of profit
 
 export class Strategy {
 	#config 
 	#hollar
-	#mmOracle
+	#oracle
 	#registry
 	#router
 	#agent
-	#lastPrices
 
 	// Creates a `Strategy`.
-	// `Strategy.initialize()` must be called on created `Strategy`.
-	constructor(sdk, evm, config, hollar, assetRegistry, agent) {
+	constructor(sdk, config, hollar, assetRegistry, agent, oracle) {
 		this.#config = config;
 		this.#hollar = hollar;
-		this.#mmOracle = new MmOracleClient(evm);
+		this.#oracle = oracle;
 		this.#registry = assetRegistry;
 		this.#agent = agent;
 		this.#router = sdk.api.router;
-		this.#lastPrices = {};
-	}
-
-	// Function loads on chain data and sets internal state of `Strategy`.
-	async initialize() {
-		this.#lastPrices[sUSDS] = await this.#getRawUSDPrice(sUSDS);
-		this.#lastPrices[sUSDe] = await this.#getRawUSDPrice(sUSDe);
 	}
 
 	// Function returns array of `Opportunity` for current block.
@@ -61,7 +45,7 @@ export class Strategy {
 			const [cfg, assetId] = [this.#config[price.id], this.#config[price.id].assetId];
 			assert.ok(assetId, `config not found for assetId=${price.id}`);
 
-			const priceUSD = await this.#getUSDPrice(assetId);	//[$/A]
+			const priceUSD = this.#oracle.getUSDPrice(assetId);	//[$/A]
 			const targetPrice = ONE.div(priceUSD);	// 1H == 1$ => 1/[$/A] == [A/$] == [A/H]
 			const sellAt = ONE.div(priceUSD.mul(cfg.sell.threshold)); //[A/H]
 			const buyAt = ONE.div(priceUSD.mul(cfg.buy.threshold));	//[A/H]
@@ -89,7 +73,7 @@ export class Strategy {
 			}
 
 			if (trade) {
-				const slippage = (trade.type == "Sell") ? (ONE.minus(cfg.sell.threshold)).div(TWO) : (cfg.buy.threshold.minus(ONE)).div(TWO)
+				const slippage = profit.mul(SLIPPAGE)
 				opps.push(new Opportunity(assets, trade, profit, profitUSD, slippage));
 			}
 		}
@@ -117,44 +101,6 @@ export class Strategy {
 		}
 
 		return prices;
-	}
-
-	// Function load and updates `lastPrices` and returns smooted USD price(`Big`) for given `assetId` for staked assets.
-	// For non-staked assets function always returns `1.0`.
-	// Lower oracle's prices than `lastPrices` are ignored and `lastPrices` is returned.
-	async #getUSDPrice(assetId) {
-		if (assetId != sUSDS && assetId != sUSDe) {
-			return new Big(ONE)
-		}
-
-		const newPrice = await this.#getRawUSDPrice(assetId);
-		if (newPrice.gt(this.#lastPrices[assetId])) {
-			let delta = newPrice.minus(this.#lastPrices[assetId])
-			if (delta.gt(ORACLE_UPDATE_SPEED)) {
-				delta = ORACLE_UPDATE_SPEED
-			}
-			this.#lastPrices[assetId] = this.#lastPrices[assetId].plus(delta);
-		}
-
-		return new Big(this.#lastPrices[assetId]);
-	}
-
-	//Function retuns raw oracle price('Big') without smoothing.
-	async #getRawUSDPrice(assetId) {
-		//TODO: loadconsoleoracles' addresses from chain
-		let oracleEntry;
-		switch (assetId) {
-			case sUSDS:
-				oracleEntry = await this.#mmOracle.getData("0x4b32bffc6acd751446e79e8687ef3815fd7924fd");
-				break;
-			case sUSDe:
-				oracleEntry = await this.#mmOracle.getData("0x22cdea305cee63d082e79f8c5db939eecd0265d0");
-				break;
-			default:
-				throw new Error(`unsupported oracle asset. asset_id=${assetId}`)
-		}
-
-		return toDecimal(new Big(oracleEntry.price.toString()), oracleEntry.decimals);
 	}
 
 	// Function calculates profit for give params.

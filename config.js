@@ -4,7 +4,7 @@ import Big from 'big.js';
 export class Config {
 	constructor(path) {
 		const cfg = JSON.parse(fs.readFileSync(path))
-		this.endpoint = cfg.endpoint;
+		this.url = cfg.url;
 		this.cooldown =  cfg.cooldown;
 
 		for (const [_, val] of Object.entries(cfg.assets))	{
@@ -13,5 +13,7 @@ export class Config {
 		}
 
 		this.assets = cfg.assets
+
+		this.coinGecko = cfg.coinGecko
 	}
 }

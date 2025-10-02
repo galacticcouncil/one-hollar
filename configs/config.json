@@ -1,6 +1,6 @@
 {
-  "endpoint": "ws://127.0.0.1:9944",
-  "cooldown": 3,
+  "url": "ws://127.0.0.1:9944",
+  "cooldown": 1,
   "assets": {
     "sUSDe": {
       "assetId": "1000625",
@@ -12,7 +12,7 @@
       "buy":	{ "threshold": "0.999", "minAmount": "5000", "maxAmount": "1000000" },
       "sell": { "threshold": "1.001", "minAmount": "5000", "maxAmount": "1000000" }
     },
-    "USDT(Tether)": {
+    "USDT": {
       "assetId": "10",
       "buy":  { "threshold": "0.999", "minAmount": "5000", "maxAmount": "1000000" },
       "sell": { "threshold": "1.001", "minAmount": "5000", "maxAmount": "1000000" }
@@ -22,5 +22,12 @@
       "buy":	{ "threshold": "0.9999", "minAmount": "5000", "maxAmount": "1000000" },
       "sell": { "threshold": "1.0001", "minAmount": "5000", "maxAmount": "1000000" }
     }
+  },
+  "coinGecko": {
+    "url": "https://api.coingecko.com/api/v3/simple",
+    "sUSDe": "ethena-staked-usde",
+    "sUSDS": "susds",
+    "precission": 4,
+    "cooldown": 600
   }
 }
