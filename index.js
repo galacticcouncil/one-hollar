@@ -39,7 +39,7 @@ const HUNDRED = new Big("100");
 
 	const oracle = new CoinGecko(cfg);
 	const now = (await api.rpc.chain.getHeader()).number.toNumber();
-	await oracle.updateUSDPrices(now);
+	await oracle.init(now);
 
 	const s = new Strategy(sdk, cfg.assets, HOLLAR, reg, ag, oracle);
 
@@ -86,6 +86,7 @@ const HUNDRED = new Big("100");
 		}
 		console.log(`INFO: opportunities=${(opps) ? opps.length : 0}, trades=${txs.length}`);
 		console.log(`INFO: DONE processing block=${header.number}`);
+		await oracle.updateUSDPrices(header.number);
 	});
 })(cfg)
 
