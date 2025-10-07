@@ -65,7 +65,7 @@ describe("oracles/coinGecko", () => {
 		});
 	});
 
-	describe("_updateOracleData(data, blockNumber)", {only: true}, async () => {
+	describe("_updateOracleData(data, blockNumber)", async () => {
 		it("should update prices up to PRICE_UPDATE speed per block if CoinGecko's price is bigger than last stored", async () => {
 			const cg = new CoinGecko(cfg);
 

@@ -2,7 +2,7 @@ import { big } from '@galacticcouncil/sdk-next';
 import { ApiPromise } from '@polkadot/api';
 import assert from 'node:assert';
 import Big from 'big.js';
-import { toDecimal } from './utils.js';
+import { toDecimal, min, max } from './utils.js';
 
 const SEARCH_ITER = 20;
 const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new Big("100")];
@@ -172,22 +172,6 @@ export class Strategy {
 
 		return [trade, profit, profitUSD];
 	}
-}
-
-function min(a, b) {
-	if (a.lt(b)) {
-		return a;
-	}
-
-	return b;
-}
-
-function max(a, b) {
-	if (a.gt(b)) {
-		return a;
-	}
-
-	return b;
 }
 
 class Opportunity {
