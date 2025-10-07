@@ -1,5 +1,5 @@
 {
-  "name": "hydration-gateway",
+  "name": "one-hollar",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
@@ -9,7 +9,7 @@
   },
   "author": "",
   "license": "ISC",
-  "description": "Simple HTTP wrapper over @galacticcouncil/sdk",
+  "description": "Arbitrage bot for Hollar stablecoin on Hydration network.",
   "dependencies": {
     "@galacticcouncil/api-augment": "^0.8.1",
     "@galacticcouncil/sdk": "9.14.0",
