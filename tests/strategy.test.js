@@ -180,7 +180,7 @@ describe("strategy.findTrade()", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
 		const routerGetBestBuyFn = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("140000.0")));
 
-		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuyFn);
 
 		//NOTE: not 5k because of imprecission in calculations
 		const expTrade = new DummyBuyTrade(new Big("4074066338"), new Big("4999990844726562500000"));
