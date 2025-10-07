@@ -13,7 +13,7 @@ Arbitrage bot trading Hollar with USDT, USDC, sUSDS and sUSDe on Hydration chain
 * `config/account.json` - encrypted file holding account's seed. File can be created e.g. by exporting account from  polkadot.js extension.
 * `.env` - environment file with password to unlock `account.json`
 
-### `configs.config.json`
+### `configs/config.json`
 * `url` - hydration RPC url that will be used to get chain state end submit transactions.
 * `cooldown` - number of blocks between trades. Bot creates `forceBatch` with all trades in one block.
 * `assets` - assets to be arbed against Hollar. Assets can be removed or supported assets can be added. Supported assets: `USDT, USDC, sUSDe, sUSDS`.
