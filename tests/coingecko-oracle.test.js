@@ -156,8 +156,6 @@ describe("oracles/coinGecko", () => {
 			assert.deepStrictEqual(cg._lastPrices["22"], new Big("1.0"), "USDC price shouldn't change.");
 			assert.deepStrictEqual(Object.keys(cg._lastPrices).length, 4, "last prices is not length of 4.");
 			assert.deepStrictEqual(cg._updatedAt, now);
-
-			console.log(cg._lastPrices)
 		});
 		
 		it("should not update before cooldown", async () => {

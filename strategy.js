@@ -6,13 +6,12 @@ import { toDecimal, min, max } from './utils.js';
 
 const SEARCH_ITER = 20;
 const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new Big("100")];
-//Percentage increase/decrease used when we are peekig for direction in trade's amount search
+// Percentage increase/decrease used when we are peekig for direction in trade's amount search
 const PEEK_SIZE = new Big("0.1"); //10%
 const SLIPPAGE = new Big("0.5"); //1/2 of profit
 
-//99.5% of agent balance will be used for trades
+// 99.5% of agent balance will be used for trades
 const MAX_BALANCE_USED = new Big("0.995");
-
 
 export class Strategy {
 	#config 

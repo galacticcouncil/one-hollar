@@ -30,6 +30,8 @@ const PRECISSION = 12;
 const hollar = "222";
 const USDT = "10";
 
+const USDT_USD_PRICE = new Big("1.0"); //[$/USDT]
+
 //NOTE: dummy xyk pool for testing
 class DummyPool {
 	reserveA;
@@ -88,18 +90,26 @@ function toInt(amt, assetId) {
 	return (amt.mul(m)).round();
 }
 
-describe("strategy.findTrade()", {only: true},async () => {
+function createGetBestSellFn(pool) {
+	return (inId, outId, amount) => {
+			const amountOut = pool.calcSellHollar(amount);
+			return Promise.resolve(new DummySellTrade(toInt(amount, hollar), toInt(amountOut, USDT)));
+		};
+}
+
+function createGetBestBuyFn(pool) {
+	return (inId, outId, amount) => {
+			const amountIn = pool.calcBuyHollar(amount);
+			return Promise.resolve(new DummyBuyTrade(toInt(amountIn, USDT), toInt(amount, hollar)));
+		};
+}
+
+describe("strategy.findTrade()", async () => {
 	it("sell Hollar should work when arb opprtunity exists", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const USDTPrice = new Big("1.0"); //[$/USDT]
-		const pool = new DummyPool(new Big("110000.0"), new Big("108374.3842"));
-		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDTPrice, async (inId, outId, amount) => {
-			//NOTE: this is mock of router.getBestSell()	
+		const routerGetBestSell = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("108374.3842")))
 
-			const amountOut = pool.calcSellHollar(amount);
-
-			return new DummySellTrade(toInt(amount, hollar), toInt(amountOut, USDT));
-		});
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSell);
 
 		const expTrade = new DummySellTrade(new Big("809796142578125000000"), new Big("815846906"));
 		const expProfit = new Big("0.007471958810");
@@ -112,15 +122,9 @@ describe("strategy.findTrade()", {only: true},async () => {
 
 	it("buy Hollar should work when arb opprotunity exists", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const USDTPrice = new Big("1.0"); //[$/USDT]
-		const pool = new DummyPool(new Big("110000.0"), new Big("115000.0"));
-		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDTPrice, async (inId, outId, amount) => {
-			//NOTE: this is mock of router.getBestBuy()	
+		const routerGetBestBuy = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("115000.0")));
 
-			const amountIn = pool.calcBuyHollar(amount);
-
-			return new DummyBuyTrade(toInt(amountIn, USDT), toInt(amount, hollar));
-		});
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
 
 		const expTrade = new DummyBuyTrade(new Big("2472074303"), new Big("2527636718750000000000"));
 		const expProfit = new Big("0.022476029819");
@@ -130,36 +134,75 @@ describe("strategy.findTrade()", {only: true},async () => {
 		assert.deepStrictEqual(actProfit.toFixed(PRECISSION), expProfit.toFixed(PRECISSION));
 		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISSION), expProfitUSD.toFixed(PRECISSION));
 	});
-	//
-	// it("sell Hollar should find no trade when no opportunity exists", () => {
-	// 	assert.ok(false, 'not implemented')
-	// });
-	//
-	// it("buy Hollar should find no trade when no opportunity exists", () => {
-	// 	assert.ok(false, 'not implemented')
-	// });
-	//
-	// it("sell Hollar should find no trade when opportunity is smaller than minAmount", () => {
-	// 	assert.ok(false, 'not implemented')
-	// });
-	//
-	// it("buy Hollar should find no trade when opportunity is smalle then minAmount", () => {
-	// 	assert.ok(false, 'not implemented')
-	// });
-	//
-	// it("buy Hollar should sell maxAmount when opportunity is bigger than maxAmount", () => {
-	// 	assert.ok(false, 'not implemented')
-	// });
-	//
-	// it("sell Hollar should sell maxAmount when opportunity is bigger then maxAmount", () => {
-	// 	assert.ok(false, 'not implemented')
-	// });
-	//
-	// it("buy Hollar should sell whole balance when both opportunity and maxAmount is bigger than agent's balance", () => {
-	// 	assert.ok(false, 'not implemented')
-	// });
-	//
-	// it("sell Hollar should sell whole balance when both opportunity and maxAmount is bigger than agent's balance", () => {
-	// 	assert.ok(false, 'not implemented')
-	// });
+
+	it("should find no trade when no opportunity exists", async () => {
+		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
+		const routerGetBestSell = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("110000.0")))
+		const routerGetBestBuy = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("110000.0")))
+
+		const [actSellTrade, actSellProfit, actSellProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSell);
+
+		assert.deepStrictEqual(actSellTrade, undefined);
+		assert.deepStrictEqual(actSellProfit, new Big(0));
+		assert.deepStrictEqual(actSellProfitUSD, new Big(0));
+
+		const [actBuyTrade, actBuyProfit, actBuyProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
+
+		assert.strictEqual(actBuyTrade, undefined);
+		assert.deepStrictEqual(actBuyProfit, new Big(0));
+		assert.deepStrictEqual(actBuyProfitUSD, new Big(0));
+	});
+
+	it("sell Hollar should find no trade when opportunity is smaller than minAmount", async () => {
+		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
+		const routerGetBestSell = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("109800.0")))
+
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSell);
+
+		assert.deepStrictEqual(actTrade, undefined);
+		assert.deepStrictEqual(actProfit, new Big(0));
+		assert.deepStrictEqual(actProfitUSD, new Big(0));
+	});
+
+	it("buy Hollar should find no trade when opportunity is smaller then minAmount", async () => {
+		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
+		const routerGetBestBuy = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("110200.0")))
+
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
+
+		assert.deepStrictEqual(actTrade, undefined);
+		assert.deepStrictEqual(actProfit, new Big(0));
+		assert.deepStrictEqual(actProfitUSD, new Big(0));
+	});
+
+	it("buy Hollar should buy maxAmount of Hollar when opportunity is bigger than maxAmount", async () => {
+		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
+		const routerGetBestBuy = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("140000.0")))
+
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
+
+		//NOTE: not 5k because of imprecission in calculations
+		const expTrade = new DummyBuyTrade(new Big("4074066338"), new Big("4999990844726562500000"));
+		const expProfit = new Big("0.22727281048180185524");
+		const expProfitUSD = new Big("925.9245067265625");
+
+		assert.deepStrictEqual(actTrade, expTrade);
+		assert.deepStrictEqual(actProfit.toFixed(PRECISSION), expProfit.toFixed(PRECISSION));
+		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISSION), expProfitUSD.toFixed(PRECISSION));
+	});
+
+	it("sell Hollar should sell maxAmount when opportunity is bigger then maxAmount", async () => {
+		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
+		const routerGetBestSell = createGetBestSellFn(new DummyPool(new Big("150000.0"), new Big("110000")))
+
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSell);
+
+		const expTrade = new DummySellTrade(new Big("4999990844726562500000"), new Big("6521727708"));
+		const expProfit = new Big("0.30434792993239123363");
+		const expProfitUSD = new Big("1521.7368632734375");
+
+		assert.deepStrictEqual(actTrade, expTrade);
+		assert.deepStrictEqual(actProfit.toFixed(PRECISSION), expProfit.toFixed(PRECISSION));
+		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISSION), expProfitUSD.toFixed(PRECISSION));
+	});
 });
