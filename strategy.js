@@ -4,13 +4,14 @@ import assert from 'node:assert';
 import Big from 'big.js';
 import { toDecimal, min, max } from './utils.js';
 
+// Number or iterations used to find best trade.
 const SEARCH_ITER = 20;
 const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new Big("100")];
-// Percentage increase/decrease used when we are peekig for direction in trade's amount search
+// Percentage increase/decrease used to peekig for direction when looking for trade.
 const PEEK_SIZE = new Big("0.1"); //10%
+// Slippage multiplier used to calculate slippage.
 const SLIPPAGE = new Big("0.5"); //1/2 of profit
-
-// 99.5% of agent balance will be used for trades
+// Up to 99.5% of agent balance will be used for max trade.
 const MAX_BALANCE_USED = new Big("0.995");
 
 export class Strategy {
@@ -21,7 +22,6 @@ export class Strategy {
 	#router
 	#agent
 
-	// Creates a `Strategy`.
 	constructor(sdk, config, hollar, assetRegistry, agent, oracle) {
 		this.#config = config;
 		this.#hollar = hollar;
@@ -127,7 +127,7 @@ export class Strategy {
 		return [amtIn, amtOut, amtInUSD, amtOutUSD, profit, profitUSD];
 	}
 
-	// Function find best trage for given params or return `[]` if trade not found.
+	// Function find best trade for given params or return `[]` if profitable trade doesn't exists.
 	// Returns `[trade data, profit[%](1==100%), profit[USD]]`
 	async findTrade(assets, minTrade, maxTrade, oraclePrice, getBestTradeFn) {
 		if (maxTrade.lt(minTrade)) {
@@ -174,17 +174,17 @@ export class Strategy {
 }
 
 class Opportunity {
-	assets
-	trade
-	profit
-	profitUSD
-	slippage
+	assets;
+	trade;
+	profit;
+	profitUSD;
+	slippage;
 
 	constructor(assets, trade, profit, profitUSD, slippage) {
 		this.assets = assets;
 		this.trade = trade;
 		this.profit = profit;
 		this.profitUSD = profitUSD;
-		this.slippage = slippage
+		this.slippage = slippage;
 	}
 }

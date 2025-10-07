@@ -1,7 +1,6 @@
 import { describe , it } from 'node:test';
 import assert from 'node:assert';
 import Big from 'big.js';
-
 import { CoinGecko } from '../oracles/coingecko.js';
 import { Config } from '../config.js';
 
@@ -43,7 +42,7 @@ describe("oracles/coinGecko", () => {
 	});
 
 	describe("init(currentBlock)", async() => {
-		it("should pull pricess from CoinGecko and inititialize prices from CoinGecko", async() => {
+		it("should pull prices from CoinGecko and inititialize prices internal state", async() => {
 			const cg = new CoinGecko(cfg);
 			const now = 1000;
 
@@ -66,7 +65,7 @@ describe("oracles/coinGecko", () => {
 	});
 
 	describe("_updateOracleData(data, blockNumber)", async () => {
-		it("should update prices up to PRICE_UPDATE speed per block if CoinGecko's price is bigger than last stored", async () => {
+		it("should update prices up to PRICE_UPDATE_SPEED per block if CoinGecko price is bigger than last stored price", async () => {
 			const cg = new CoinGecko(cfg);
 
 			cg._lastPrices[sUSDS] = new Big("1.07");
@@ -79,7 +78,7 @@ describe("oracles/coinGecko", () => {
 			const coinGeckoSUSDsPrice = (new Big("1.07").plus(maxUpdate)).plus(new Big("0.005"));
 			const coinGeckoSUSDePrice = (new Big("1.20").plus(maxUpdate)).plus(new Big("0.01"));
 
-			const data = { 'ethena-staked-usde': { usd: coinGeckoSUSDePrice.toFixed(6) }, susds: { usd: coinGeckoSUSDsPrice.toFixed(6)} };
+			const data = { 'ethena-staked-usde': { usd: parseFloat(coinGeckoSUSDePrice.toFixed(6)) }, susds: { usd: parseFloat(coinGeckoSUSDsPrice.toFixed(6))} };
 			cg._updateOracleData(data, now);
 
 			assert.deepStrictEqual(cg._lastPrices[sUSDS], new Big("1.07").plus(maxUpdate));
@@ -90,7 +89,7 @@ describe("oracles/coinGecko", () => {
 
 		});
 
-		it("should update up to CoinGecko's price if CoinGecko's price is bigger than last stored and price diff is smaller than PRICE_UPDATE per block change", () => {
+		it("should update up to CoinGecko's price if CoinGecko price is bigger than last stored price and price diff is smaller than PRICE_UPDATE_SPEED per block", () => {
 			const cg = new CoinGecko(cfg);
 
 			cg._lastPrices[sUSDS] = new Big("1.07");
@@ -103,7 +102,7 @@ describe("oracles/coinGecko", () => {
 			const coinGeckoSUSDsPrice = (new Big("1.07")).plus(new Big("0.0012"));
 			const coinGeckoSUSDePrice = (new Big("1.20")).plus(new Big("0.0009"));
 
-			const data = { 'ethena-staked-usde': { usd: coinGeckoSUSDePrice.toFixed(6) }, susds: { usd: coinGeckoSUSDsPrice.toFixed(6)} };
+			const data = { 'ethena-staked-usde': { usd: parseFloat(coinGeckoSUSDePrice.toFixed(6)) }, susds: { usd: parseFloat(coinGeckoSUSDsPrice.toFixed(6))} };
 			cg._updateOracleData(data, now);
 
 			assert.deepStrictEqual(cg._lastPrices[sUSDS], coinGeckoSUSDsPrice);
@@ -113,7 +112,7 @@ describe("oracles/coinGecko", () => {
 			assert.deepStrictEqual(cg._updatedAt, now);
 		});
 
-		it("should not update price if CoinGecko's price is lower than last stored price", () => {
+		it("should not update price if CoinGecko price is lower than last stored price", () => {
 			const cg = new CoinGecko(cfg);
 
 			cg._lastPrices[sUSDS] = new Big("1.07");
@@ -124,7 +123,7 @@ describe("oracles/coinGecko", () => {
 			const coinGeckoSUSDsPrice = (new Big("1.07")).minus(new Big("0.0002"));
 			const coinGeckoSUSDePrice = (new Big("1.20")).minus(new Big("0.0005"));
 
-			const data = { 'ethena-staked-usde': { usd: coinGeckoSUSDePrice.toFixed(6) }, susds: { usd: coinGeckoSUSDsPrice.toFixed(6)} };
+			const data = { 'ethena-staked-usde': { usd: parseFloat(coinGeckoSUSDePrice.toFixed(6)) }, susds: { usd: parseFloat(coinGeckoSUSDsPrice.toFixed(6)) } };
 			cg._updateOracleData(data, now);
 
 			assert.deepStrictEqual(cg._lastPrices[sUSDS], new Big("1.07"));
@@ -158,7 +157,7 @@ describe("oracles/coinGecko", () => {
 			assert.deepStrictEqual(cg._updatedAt, now);
 		});
 		
-		it("should not update before cooldown", async () => {
+		it("should not update prices before cooldown", async () => {
 			const cg = new CoinGecko(cfg);
 			const now = cfg.coinGecko.cooldown - 1;
 

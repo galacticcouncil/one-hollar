@@ -2,8 +2,8 @@ import { AssetClient } from '@galacticcouncil/sdk';
 import { strict as assert } from 'node:assert';
 
 export class AssetRegistry {
-	#api
-	#assets
+	#api;
+	#assets;
 
 	constructor(api) {
 		this.#api = new AssetClient(api);
@@ -14,7 +14,7 @@ export class AssetRegistry {
 		assert.ok(this.#assets, "asset registry is undefined");
 		const asset = this.#assets[assetId];
 		assert.ok(asset, `missing asset=${assetId}`);
-		assert.ok(asset.decimals && asset.decimals > 0, `invalid asset's decimals, asset=${assetId}, decimals=${asset.decimals}`);
+		assert.ok(asset.decimals && asset.decimals > 0, `invalid asset decimals, asset=${assetId}, decimals=${asset.decimals}`);
 
 		return asset.decimals;
 	}
@@ -23,7 +23,7 @@ export class AssetRegistry {
 		assert.ok(this.#assets, "asset registry is undefined");
 		const asset = this.#assets[assetId];
 		assert.ok(asset, `missing asset=${assetId}`);
-		assert.ok(asset.symbol && asset.symbol != "", `invalid asset's symbol, asset=${assetId}, symbol=${asset.symbol}`);
+		assert.ok(asset.symbol && asset.symbol != "", `invalid asset symbol, asset=${assetId}, symbol=${asset.symbol}`);
 
 		return asset.symbol;
 	}
@@ -31,7 +31,7 @@ export class AssetRegistry {
 	async update() {
 		const assets = await this.#api.getOnChainAssets();
 		assets.forEach(a => {
-			this.#assets[a.id] = a
+			this.#assets[a.id] = a;
 		});
 	}
 }

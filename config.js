@@ -8,12 +8,12 @@ export class Config {
 		this.cooldown =  cfg.cooldown;
 
 		for (const [_, val] of Object.entries(cfg.assets))	{
-			val.buy.threshold = new Big(val.buy.threshold)
-			val.sell.threshold = new Big(val.sell.threshold)
-		}
+			val.buy.threshold = new Big(val.buy.threshold);
+			val.sell.threshold = new Big(val.sell.threshold);
+		};
 
-		this.assets = cfg.assets
+		this.assets = cfg.assets;
 
-		this.coinGecko = cfg.coinGecko
+		this.coinGecko = cfg.coinGecko;
 	}
 }

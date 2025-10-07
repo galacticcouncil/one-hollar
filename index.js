@@ -1,4 +1,4 @@
-import { createSdkContext, EvmClient  } from '@galacticcouncil/sdk';
+import { createSdkContext } from '@galacticcouncil/sdk';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { Strategy } from './strategy.js'
 import { Agent, loadSigner } from './agent.js'
@@ -9,7 +9,7 @@ import fs from 'fs';
 import { Config } from './config.js';
 
 const cfgDir = "./configs"
-const cfg = new Config(`${cfgDir}/config.json`)
+const cfg = new Config(`${cfgDir}/config.json`);
 
 const wsProvider = new WsProvider(cfg.url, 2_500, {}, 60_000, 102400, 10 * 60_000);
 
@@ -21,10 +21,12 @@ const HOLLAR = "222";
 
 const HUNDRED = new Big("100");
 
+
+let lastSubmittableBlock = 0;
 (async function main(cfg) {
 	const secretPwd = process.env.SECRET_PASSWORD;
 	if (!secretPwd) {
-		console.error(`ERROR: missing SECRET_PWD env variable to decrypt acount.json file`);
+		console.error(`ERROR: missing SECRET_PWD env variable to decrypt account.json file`);
 		process.exit(1)
 	}
 	const secretPath = `${cfgDir}/account.json`;
@@ -36,6 +38,7 @@ const HUNDRED = new Big("100");
 	agAssets.push(HOLLAR);
 	let signer = loadSigner(secretPath, secretPwd);
 	const ag = new Agent(api, agAssets, reg, signer);
+	await ag.updateBalances();
 
 	const oracle = new CoinGecko(cfg);
 	const now = (await api.rpc.chain.getHeader()).number.toNumber();
@@ -43,6 +46,7 @@ const HUNDRED = new Big("100");
 
 	const s = new Strategy(sdk, cfg.assets, HOLLAR, reg, ag, oracle);
 
+	lastSubmittableBlock = now;
 	api.derive.chain.subscribeNewHeads(async (header) => {
 		console.log(`INFO: START processing block=${header.number}`)
 		await ag.updateBalances();
@@ -69,14 +73,15 @@ const HUNDRED = new Big("100");
 
 				//NOTE: we don't track received amount intentionally. We don't want to count with received amount from previous trades.
 				ag.sub(assetIn, opp.trade.amountIn);
-				txs.push(tx.get())
+				txs.push(tx.get());
 			} else {
 				console.log(`INFO: not enough balance to execute opportunity`);
 			}
 
 		}
 
-		if (header.number % cfg.cooldown == 0) {
+		if ((header.number - lastSubmittableBlock) > cfg.cooldown) {
+			lastSubmittableBlock = header.number;
 			if (txs.length != 0) {
 				await executeTransactions(ag, txs);
 				console.log(`INFO: trades submitted`);
@@ -95,7 +100,7 @@ async function executeTransactions(ag, txs) {
 
 	const unsub = await api.tx.utility.forceBatch(txs).signAndSend(ag.signer, { nonce: nonce}, ({status, event, dispatchError}) => {
 		if (dispatchError) {
-			console.log(`ERROR: failed to execute transaction, ${dispatchError.toString()}`)
+			console.log(`ERROR: failed to execute transaction, ${dispatchError.toString()}`);
 			process.exit(1)
 		}
 

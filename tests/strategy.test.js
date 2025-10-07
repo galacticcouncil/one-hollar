@@ -1,7 +1,6 @@
 import { describe , it } from 'node:test';
 import assert from 'node:assert';
 import Big from 'big.js';
-
 import { Strategy } from '../strategy.js';
 import { Config } from '../config.js';
 
@@ -20,7 +19,7 @@ const dummyRegistry = {
 			case "222":
 				return 18;
 			default:
-				throw new Error(`asset: ${aId} not found in registry`);
+				throw new Error(`asset ${aId} not found in registry`);
 		}
 	}
 };
@@ -42,14 +41,16 @@ class DummyPool {
 		this.reserveH = amountHollar;
 	}
 
-	//out = (reserveA * amt)/(reserveH + amt)
-	//amt is amount to sell
+	// out = (reserveA * amt)/(reserveH + amt)
+	// amt is amount to sell
+	// calculates amountOut
 	calcSellHollar(amt) {
 		return (this.reserveA.mul(amt)).div(this.reserveH.plus(amt))
 	}
 
-	// in = (reserveA + amt) / (reserveH - amt)
+	// in = (reserveA * amt) / (reserveH - amt)
 	// amt is amount to buy
+	// calculates amountIn
 	calcBuyHollar(amt) {
 		return (this.reserveA.mul(amt)).div(this.reserveH.minus(amt))
 	}
@@ -107,9 +108,9 @@ function createGetBestBuyFn(pool) {
 describe("strategy.findTrade()", async () => {
 	it("sell Hollar should work when arb opprtunity exists", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const routerGetBestSell = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("108374.3842")))
+		const routerGetBestSellFn = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("108374.3842")));
 
-		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSell);
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSellFn);
 
 		const expTrade = new DummySellTrade(new Big("809796142578125000000"), new Big("815846906"));
 		const expProfit = new Big("0.007471958810");
@@ -122,9 +123,9 @@ describe("strategy.findTrade()", async () => {
 
 	it("buy Hollar should work when arb opprotunity exists", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const routerGetBestBuy = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("115000.0")));
+		const routerGetBestBuyFn = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("115000.0")));
 
-		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuyFn);
 
 		const expTrade = new DummyBuyTrade(new Big("2472074303"), new Big("2527636718750000000000"));
 		const expProfit = new Big("0.022476029819");
@@ -137,16 +138,16 @@ describe("strategy.findTrade()", async () => {
 
 	it("should find no trade when no opportunity exists", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const routerGetBestSell = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("110000.0")))
-		const routerGetBestBuy = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("110000.0")))
+		const routerGetBestSellFn = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("110000.0")));
+		const routerGetBestBuyFn = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("110000.0")));
 
-		const [actSellTrade, actSellProfit, actSellProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSell);
+		const [actSellTrade, actSellProfit, actSellProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSellFn);
 
 		assert.deepStrictEqual(actSellTrade, undefined);
 		assert.deepStrictEqual(actSellProfit, new Big(0));
 		assert.deepStrictEqual(actSellProfitUSD, new Big(0));
 
-		const [actBuyTrade, actBuyProfit, actBuyProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
+		const [actBuyTrade, actBuyProfit, actBuyProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuyFn);
 
 		assert.strictEqual(actBuyTrade, undefined);
 		assert.deepStrictEqual(actBuyProfit, new Big(0));
@@ -155,9 +156,9 @@ describe("strategy.findTrade()", async () => {
 
 	it("sell Hollar should find no trade when opportunity is smaller than minAmount", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const routerGetBestSell = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("109800.0")))
+		const routerGetBestSellFn = createGetBestSellFn(new DummyPool(new Big("110000.0"), new Big("109800.0")));
 
-		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSell);
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSellFn);
 
 		assert.deepStrictEqual(actTrade, undefined);
 		assert.deepStrictEqual(actProfit, new Big(0));
@@ -166,9 +167,9 @@ describe("strategy.findTrade()", async () => {
 
 	it("buy Hollar should find no trade when opportunity is smaller then minAmount", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const routerGetBestBuy = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("110200.0")))
+		const routerGetBestBuyFn = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("110200.0")));
 
-		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuyFn);
 
 		assert.deepStrictEqual(actTrade, undefined);
 		assert.deepStrictEqual(actProfit, new Big(0));
@@ -177,7 +178,7 @@ describe("strategy.findTrade()", async () => {
 
 	it("buy Hollar should buy maxAmount of Hollar when opportunity is bigger than maxAmount", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const routerGetBestBuy = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("140000.0")))
+		const routerGetBestBuyFn = createGetBestBuyFn(new DummyPool(new Big("110000.0"), new Big("140000.0")));
 
 		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuy);
 
@@ -193,9 +194,9 @@ describe("strategy.findTrade()", async () => {
 
 	it("sell Hollar should sell maxAmount when opportunity is bigger then maxAmount", async () => {
 		let s = new Strategy(dummySDK, null, hollar, dummyRegistry, null, null);
-		const routerGetBestSell = createGetBestSellFn(new DummyPool(new Big("150000.0"), new Big("110000")))
+		const routerGetBestSellFn = createGetBestSellFn(new DummyPool(new Big("150000.0"), new Big("110000")));
 
-		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSell);
+		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([hollar, USDT], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestSellFn);
 
 		const expTrade = new DummySellTrade(new Big("4999990844726562500000"), new Big("6521727708"));
 		const expProfit = new Big("0.30434792993239123363");
