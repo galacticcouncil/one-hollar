@@ -24,7 +24,8 @@ describe("oracles/coinGecko", () => {
 					"1000745": new Big(0),
 					"1000625": new Big(0),
 				},
-				_precission: cfg.coinGecko.precission,
+				_precision: cfg.coinGecko.precision,
+				_failedReqCount: 0,
 
 				_coinGeckoSusdeId: "ethena-staked-usde",
 				_coinGeckoSusdsId: "susds",

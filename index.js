@@ -2,7 +2,7 @@ import { createSdkContext } from '@galacticcouncil/sdk';
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { Strategy } from './strategy.js'
 import { Agent, loadSigner } from './agent.js'
-import { AssetRegistry } from './assetRegisty.js'
+import { AssetRegistry } from './assetRegistry.js'
 import { CoinGecko } from './oracles/coingecko.js'
 import Big from 'big.js';
 import fs from 'fs';
@@ -26,7 +26,7 @@ let lastSubmittableBlock = 0;
 (async function main(cfg) {
 	const secretPwd = process.env.SECRET_PASSWORD;
 	if (!secretPwd) {
-		console.error(`ERROR: missing SECRET_PWD env variable to decrypt account.json file`);
+		console.error(`ERROR: missing SECRET_PASSWORD env variable to decrypt account.json file`);
 		process.exit(1)
 	}
 	const secretPath = `${cfgDir}/account.json`;

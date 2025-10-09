@@ -7,7 +7,7 @@ import { toDecimal, min, max } from './utils.js';
 // Number or iterations used to find best trade.
 const SEARCH_ITER = 20;
 const [ZERO, ONE, TWO, HUNDRED] = [new Big("0"), new Big("1"), new Big("2"), new Big("100")];
-// Percentage increase/decrease used to peekig for direction when looking for trade.
+// Percentage increase/decrease used to peeking for direction when looking for trade.
 const PEEK_SIZE = new Big("0.1"); //10%
 // Slippage multiplier used to calculate slippage.
 const SLIPPAGE = new Big("0.5"); //1/2 of profit

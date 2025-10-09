@@ -24,7 +24,7 @@ const dummyRegistry = {
 	}
 };
 
-const PRECISSION = 12;
+const PRECISION = 12;
 
 const hollar = "222";
 const USDT = "10";
@@ -117,8 +117,8 @@ describe("strategy.findTrade()", async () => {
 		const expProfitUSD = new Big("6.050763421875");
 
 		assert.deepStrictEqual(actTrade, expTrade);
-		assert.deepStrictEqual(actProfit.toFixed(PRECISSION), expProfit.toFixed(PRECISSION));
-		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISSION), expProfitUSD.toFixed(PRECISSION));
+		assert.deepStrictEqual(actProfit.toFixed(PRECISION), expProfit.toFixed(PRECISION));
+		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISION), expProfitUSD.toFixed(PRECISION));
 	});
 
 	it("buy Hollar should work when arb opprotunity exists", async () => {
@@ -132,8 +132,8 @@ describe("strategy.findTrade()", async () => {
 		const expProfitUSD = new Big("55.562415750000");
 	
 		assert.deepStrictEqual(actTrade, expTrade);
-		assert.deepStrictEqual(actProfit.toFixed(PRECISSION), expProfit.toFixed(PRECISSION));
-		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISSION), expProfitUSD.toFixed(PRECISSION));
+		assert.deepStrictEqual(actProfit.toFixed(PRECISION), expProfit.toFixed(PRECISION));
+		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISION), expProfitUSD.toFixed(PRECISION));
 	});
 
 	it("should find no trade when no opportunity exists", async () => {
@@ -182,14 +182,14 @@ describe("strategy.findTrade()", async () => {
 
 		const [actTrade, actProfit, actProfitUSD] = await s.findTrade([USDT, hollar], new Big("200.0"), new Big("5000.0"), USDT_USD_PRICE, routerGetBestBuyFn);
 
-		//NOTE: not 5k because of imprecission in calculations
+		//NOTE: not 5k because of imprecision in calculations
 		const expTrade = new DummyBuyTrade(new Big("4074066338"), new Big("4999990844726562500000"));
 		const expProfit = new Big("0.22727281048180185524");
 		const expProfitUSD = new Big("925.9245067265625");
 
 		assert.deepStrictEqual(actTrade, expTrade);
-		assert.deepStrictEqual(actProfit.toFixed(PRECISSION), expProfit.toFixed(PRECISSION));
-		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISSION), expProfitUSD.toFixed(PRECISSION));
+		assert.deepStrictEqual(actProfit.toFixed(PRECISION), expProfit.toFixed(PRECISION));
+		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISION), expProfitUSD.toFixed(PRECISION));
 	});
 
 	it("sell Hollar should sell maxAmount when opportunity is bigger then maxAmount", async () => {
@@ -203,7 +203,7 @@ describe("strategy.findTrade()", async () => {
 		const expProfitUSD = new Big("1521.7368632734375");
 
 		assert.deepStrictEqual(actTrade, expTrade);
-		assert.deepStrictEqual(actProfit.toFixed(PRECISSION), expProfit.toFixed(PRECISSION));
-		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISSION), expProfitUSD.toFixed(PRECISSION));
+		assert.deepStrictEqual(actProfit.toFixed(PRECISION), expProfit.toFixed(PRECISION));
+		assert.deepStrictEqual(actProfitUSD.toFixed(PRECISION), expProfitUSD.toFixed(PRECISION));
 	});
 });

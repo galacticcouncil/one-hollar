@@ -27,7 +27,7 @@
     "url": "https://api.coingecko.com/api/v3/simple",
     "sUSDe": "ethena-staked-usde",
     "sUSDS": "susds",
-    "precission": 4,
+    "precision": 4,
     "cooldown": 600
   }
 }

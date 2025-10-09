@@ -37,7 +37,7 @@ export class Agent {
 	sub(assetId, amount) {
 		let balanceNow = this.balanceInt(assetId);
 
-		assert.ok(balanceNow.gte(amount), `balance to low, balance_now=${balanceNow}, amount=${amount}`);
+		assert.ok(balanceNow.gte(amount), `balance too low, balance_now=${balanceNow}, amount=${amount}`);
 
 		this.#assets[assetId] = balanceNow.minus(amount);
 	}
@@ -86,10 +86,15 @@ export class Agent {
 }
 
 export function loadSigner(path, password) {
-	const keyring = new Keyring( { type: 'sr25519'});
-	const p = JSON.parse(fs.readFileSync(path));
-	const pair = keyring.addFromJson(p);
-	pair.decodePkcs8(password);
+	try {
 
-	return pair;
+		const keyring = new Keyring( { type: 'sr25519'});
+		const p = JSON.parse(fs.readFileSync(path));
+		const pair = keyring.addFromJson(p);
+		pair.decodePkcs8(password);
+
+		return pair;
+	} catch (err) {
+		throw new Error(`Failed to load signer from ${path}: ${err.message}`);
+	}
 }
