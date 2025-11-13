@@ -1,0 +1,8 @@
+services:
+  hollarbot:
+    build: .
+    env_file: ".env"
+    volumes:
+      - ./configs/config.json:/home/node/bot/configs/config.json
+      - ./configs/account.json:/home/node/bot/configs/account.json
+
