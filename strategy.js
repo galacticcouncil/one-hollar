@@ -1,4 +1,3 @@
-import { big } from '@galacticcouncil/sdk-next';
 import { ApiPromise } from '@polkadot/api';
 import assert from 'node:assert';
 import Big from 'big.js';
